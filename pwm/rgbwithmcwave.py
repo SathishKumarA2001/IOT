@@ -5,7 +5,7 @@ from threading import Thread
 
 GPIO.setmode(GPIO.BOARD)
 
-speed = 0.10
+speed = 0.1
 
 class RGB():
     def __init__(self, r, g, b):
@@ -25,41 +25,49 @@ class RGB():
         self.g.ChangeDutyCycle(int(g))
         self.b.ChangeDutyCycle(int(b))
 
+
+stopThread = False
 def rgb_transistion_thred():
-    while True:
+    while not stopThread:
         for c in Color("red").range_to(Color("green"), 100):
+            if stopThread: return
             led.setRGB(c.rgb)
             time.sleep(speed)
         for c in Color("red").range_to(Color("blue"), 255):
+            if stopThread: return
             led.setRGB(c.rgb)
             time.sleep(speed)
         for c in Color("blue").range_to(Color("red"), 255):
+            if stopThread: return
             led.setRGB(c.rgb)
             time.sleep(speed)
 
 led = RGB(32, 33, 35)
 
-t = Thread(target=rgb_transistion_thred)
-t.start()
+thread1 = Thread(target=rgb_transistion_thred)
+thread1.start()
 
 inputchannel = 7
 GPIO.setup(inputchannel, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.add_event_detect(inputchannel, GPIO.RISING)
 
 starttime = None
 try: 
     while True:
-        if GPIO.event_detected(inputchannel):
+        if GPIO.input(inputchannel):           
             if starttime is None:
                 starttime = time.time()
 
             if starttime is not None:
                 speed = time.time() - starttime
                 starttime = None
-        
-        print(speed)
-        time.sleep(0.1)
+
+            print(speed)           
+
+        time.sleep(1)
+
 except KeyboardInterrupt:
-    t.stop()
     GPIO.cleanup()
+    stopThread = True
+    thread1.join()
     print("Cleaned up")
+
